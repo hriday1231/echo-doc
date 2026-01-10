@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 import google.generativeai as genai
 import requests
 
-# ---------- Setup ----------
 load_dotenv()
 app = Flask(__name__)
 
@@ -13,7 +12,6 @@ if not GOOGLE_API_KEY:
     raise RuntimeError("GOOGLE_API_KEY is not set. Put it in your .env file.")
 genai.configure(api_key=GOOGLE_API_KEY)
 
-# Prefer 2.5 (works with Continue); clean fallbacks.
 MODEL_CANDIDATES = [
     os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
     "gemini-2.5-pro",
@@ -32,11 +30,9 @@ def _first_model():
 
 GEMINI_MODEL = _first_model()
 
-# Reviewer provider: "coderabbit" or "gemini" (default).
 REVIEW_PROVIDER = os.getenv("REVIEW_PROVIDER", "gemini").lower()
 CODERABBIT_API_KEY = os.getenv("CODERABBIT_API_KEY")
 
-# ---------- Agents ----------
 def generate_code(prompt_text: str) -> str:
     try:
         engineered = (
@@ -56,7 +52,7 @@ def _review_with_coderabbit(code_text: str) -> str:
     if not CODERABBIT_API_KEY:
         return "Review skipped: API key not configured."
     try:
-        api_url = "https://api.coderabbit.ai/v1/review"  # ensure plain URL
+        api_url = "https://api.coderabbit.ai/v1/review"
         headers = {
             "Authorization": f"Bearer {CODERABBIT_API_KEY}",
             "Content-Type": "application/json",
@@ -97,12 +93,10 @@ def review_code(code_text: str) -> str:
     """Try configured provider; fall back to Gemini if needed."""
     if REVIEW_PROVIDER == "coderabbit":
         result = _review_with_coderabbit(code_text)
-        # If provider failed (common: Status N/A), fall back automatically.
         if result.startswith("Could not review code"):
             backup = _review_with_gemini(code_text)
             return f"{result}\n\n---\nFallback (Gemini):\n{backup}"
         return result
-    # default path
     return _review_with_gemini(code_text)
 
 def generate_docs_with_gemini(code_text: str) -> str:
@@ -121,14 +115,12 @@ def generate_docs_with_gemini(code_text: str) -> str:
     except Exception as e:
         return f"Could not generate documentation with Gemini: {e}"
 
-# ---------- Routes ----------
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    # Expect audio via multipart/form-data { audio: Blob(webm/opus) }
     if "audio" not in request.files:
         return jsonify({"error": "No audio file provided"}), 400
 
